@@ -1,192 +1,353 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>📖 Text & PDF to Speech Converter</title>
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #ffecd2, #fcb69f);
-      min-height: 100vh;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .container {
-      background: white;
-      padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      width: 90%;
-      max-width: 700px;
-      text-align: center;
-    }
-
-    h1 {
-      color: #ff7043;
-      margin-bottom: 10px;
-    }
-
-    textarea {
-      width: 100%;
-      height: 180px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      padding: 10px;
-      font-size: 1rem;
-      resize: none;
-    }
-
-    .controls {
-      margin-top: 15px;
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
-    }
-
-    button {
-      background: #ff7043;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 20px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.3s;
-      margin-top: 10px;
-    }
-
-    button:hover {
-      background: #e64a19;
-    }
-
-    select, input[type="file"], input[type="range"] {
-      margin-top: 10px;
-      font-size: 1rem;
-    }
-
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 15px;
-    }
-
-    footer {
-      margin-top: 20px;
-      font-size: 0.9rem;
-      color: #666;
-    }
-
-    .loading {
-      color: #ff7043;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Text & PDF → Speech (Upload, Drag & Drop, Multiple Voices)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap">
+<style>
+  :root{
+    --card:#fff;
+    --accent:#ff7043;
+    --muted:#6b7280;
+    --bg:linear-gradient(135deg,#e0eafc,#cfdef3);
+  }
+  *{box-sizing:border-box;font-family:'Poppins',sans-serif}
+  body{margin:0;min-height:100vh;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:18px;color:#111}
+  .app{width:100%;max-width:900px;background:var(--card);border-radius:12px;padding:18px;box-shadow:0 10px 35px rgba(2,6,23,0.12)}
+  h1{margin:0 0 8px;font-size:20px;color:#0f172a}
+  p.lead{margin:0 0 12px;color:var(--muted)}
+  .layout{display:grid;grid-template-columns:1fr 320px;gap:16px}
+  textarea{width:100%;min-height:220px;padding:12px;border-radius:8px;border:1px solid #e6eef8;resize:vertical;font-size:15px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  select,input[type=file],button,input[type=range]{padding:8px;border-radius:8px;border:1px solid #d1e6ff;background:white}
+  button.primary{background:var(--accent);color:#fff;border:none;cursor:pointer}
+  .filebox{border:2px dashed #dbeafe;padding:14px;border-radius:10px;text-align:center;color:#0f172a;cursor:pointer}
+  .filebox.dragover{background:#fef3c7}
+  .sidebar{background:#fbfbff;padding:12px;border-radius:8px;border:1px solid #eef2ff}
+  .row{display:flex;gap:8px;align-items:center}
+  label{font-size:13px;color:var(--muted);display:block;margin-top:8px}
+  .voices-list{max-height:240px;overflow:auto;border:1px solid #eef2ff;padding:6px;border-radius:6px;margin-top:8px;background:#fff}
+  .voice-item{padding:6px;border-radius:6px;margin-bottom:6px;border:1px solid #f1f5f9}
+  .small{font-size:12px;color:var(--muted)}
+  .controls-bottom{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .progress{height:8px;background:#e6eef8;border-radius:6px;overflow:hidden;margin-top:8px}
+  .progress > i{display:block;height:100%;background:linear-gradient(90deg,#60a5fa,#06b6d4);width:0%}
+  footer{margin-top:14px;text-align:center;color:var(--muted);font-size:13px}
+  @media(max-width:880px){.layout{grid-template-columns:1fr}.sidebar{order:2}}
+</style>
 </head>
 <body>
+  <div class="app" role="application">
+    <h1>📚 Text & PDF → Speech (Upload / Drag & Drop)</h1>
+    <p class="lead">Type or paste text, or upload <code>.txt</code> / <code>.pdf</code>. Choose voice, rate, pitch, volume. Use pause/resume for control.</p>
 
-  <div class="container">
-    <h1>🎧 Text & PDF to Speech Converter</h1>
-    <p>Type text or upload a file (.txt / .pdf), and listen to it aloud!</p>
-
-    <textarea id="text" placeholder="Type or upload text here..."></textarea>
-
-    <div class="controls">
+    <div class="layout">
       <div>
-        <label for="voiceSelect">Voice:</label>
-        <select id="voiceSelect"></select>
+        <div id="filebox" class="filebox" tabindex="0">
+          📎 Click to choose file or drag & drop here<br><span class="small">Supports .txt and .pdf</span>
+        </div>
+
+        <label for="fileInput">Hidden file input (click file box above)</label>
+        <input id="fileInput" type="file" accept=".txt,.pdf" style="display:none" />
+
+        <label for="text">Text to read</label>
+        <textarea id="text" placeholder="Type or paste text here..."></textarea>
+
+        <div class="controls">
+          <div style="min-width:160px">
+            <label for="voiceLang">Filter by language</label>
+            <select id="voiceLang"><option value="all">All languages</option></select>
+          </div>
+
+          <div style="min-width:160px">
+            <label for="voiceSelect">Choose voice</label>
+            <select id="voiceSelect"></select>
+          </div>
+
+          <div style="min-width:140px">
+            <label for="rate">Rate: <span id="rateVal">1.0</span>x</label>
+            <input id="rate" type="range" min="0.5" max="2" step="0.1" value="1">
+          </div>
+
+          <div style="min-width:140px">
+            <label for="pitch">Pitch: <span id="pitchVal">1.0</span></label>
+            <input id="pitch" type="range" min="0.5" max="2" step="0.1" value="1">
+          </div>
+
+          <div style="min-width:140px">
+            <label for="volume">Volume: <span id="volVal">1.0</span></label>
+            <input id="volume" type="range" min="0" max="1" step="0.1" value="1">
+          </div>
+        </div>
+
+        <div class="controls-bottom">
+          <button id="speakBtn" class="primary">🔊 Speak</button>
+          <button id="pauseBtn">⏸ Pause</button>
+          <button id="resumeBtn">▶ Resume</button>
+          <button id="stopBtn">⏹ Stop</button>
+          <button id="refreshVoicesBtn">🔁 Refresh Voices</button>
+          <div style="margin-left:auto" class="small">Voices available: <span id="voicesCount">0</span></div>
+        </div>
+
+        <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
       </div>
 
-      <div>
-        <label for="rateRange">Speed:</label>
-        <input type="range" id="rateRange" min="0.5" max="2" value="1" step="0.1">
-      </div>
+      <aside class="sidebar" aria-label="Voices and status">
+        <div><strong>Status</strong></div>
+        <div id="status" class="small" style="margin-top:6px">Ready</div>
+
+        <label>Available voices</label>
+        <div class="voices-list" id="voicesList"></div>
+
+        <label>Controls</label>
+        <div class="small" style="line-height:1.5">
+          • Drag a file to the box to load it.<br>
+          • Long docs are read in chunks to avoid browser truncation.<br>
+          • If desired voices are missing, install OS voices or use cloud TTS.
+        </div>
+      </aside>
     </div>
 
-    <label for="fileInput">📎 Upload Text/PDF File:</label>
-    <input type="file" id="fileInput" accept=".txt, .pdf">
-
-    <p id="status" class="loading"></p>
-
-    <div>
-      <button onclick="speakText()">🔊 Speak</button>
-      <button onclick="stopSpeaking()">⏹ Stop</button>
-    </div>
-
-    <footer>Made with ❤️ by Ganesh Babu | B.Tech IT</footer>
+    <footer>Made with ❤️ by Ganesh Babu — B.Tech IT</footer>
   </div>
 
-  <!-- PDF.js Library -->
+  <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
-  <script>
-    const textArea = document.getElementById('text');
-    const voiceSelect = document.getElementById('voiceSelect');
-    const rateRange = document.getElementById('rateRange');
-    const fileInput = document.getElementById('fileInput');
-    const status = document.getElementById('status');
-    let voices = [];
+<script>
+/* ======= Utility & Elements ======= */
+const fileInput = document.getElementById('fileInput');
+const filebox = document.getElementById('filebox');
+const textArea = document.getElementById('text');
+const voiceSelect = document.getElementById('voiceSelect');
+const voiceLang = document.getElementById('voiceLang');
+const rateEl = document.getElementById('rate');
+const pitchEl = document.getElementById('pitch');
+const volumeEl = document.getElementById('volume');
+const rateVal = document.getElementById('rateVal');
+const pitchVal = document.getElementById('pitchVal');
+const volVal = document.getElementById('volVal');
+const speakBtn = document.getElementById('speakBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const resumeBtn = document.getElementById('resumeBtn');
+const stopBtn = document.getElementById('stopBtn');
+const refreshVoicesBtn = document.getElementById('refreshVoicesBtn');
+const statusEl = document.getElementById('status');
+const voicesCount = document.getElementById('voicesCount');
+const voicesList = document.getElementById('voicesList');
+const progressBar = document.getElementById('progressBar');
 
-    // Load browser voices
-    function loadVoices() {
-      voices = window.speechSynthesis.getVoices();
-      voiceSelect.innerHTML = voices
-        .map((voice, i) => `<option value="${i}">${voice.name} (${voice.lang})</option>`)
-        .join('');
-    }
-    window.speechSynthesis.onvoiceschanged = loadVoices;
+let voices = [];
+let utteranceQueue = [];
+let isSpeaking = false;
+let currentIndex = 0;
 
-    function speakText() {
-      const text = textArea.value.trim();
-      if (!text) {
-        alert('Please enter or upload some text!');
-        return;
+/* ======= Load voices ======= */
+function loadVoices() {
+  voices = window.speechSynthesis.getVoices() || [];
+  voiceSelect.innerHTML = voices.map((v,i)=>`<option value="${i}">${v.name} — ${v.lang}${v.default? ' (default)':''}</option>`).join('');
+  // Build language filter
+  const langs = Array.from(new Set(voices.map(v => v.lang.split('-')[0] || v.lang))).sort();
+  voiceLang.innerHTML = `<option value="all">All languages</option>` + langs.map(l=>`<option value="${l}">${l}</option>`).join('');
+  voicesCount.textContent = voices.length;
+  renderVoicesList();
+}
+window.speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+/* ======= Filter voices by selected language ======= */
+voiceLang.addEventListener('change', ()=>{
+  const lang = voiceLang.value;
+  voiceSelect.innerHTML = voices
+    .map((v,i)=> ({v,i}))
+    .filter(item => lang === 'all' || (item.v.lang.split('-')[0] === lang))
+    .map(item => `<option value="${item.i}">${item.v.name} — ${item.v.lang}${item.v.default? ' (default)':''}</option>`).join('');
+});
+
+/* ======= Show voices list in sidebar ======= */
+function renderVoicesList(){
+  voicesList.innerHTML = voices.length ? voices.map((v,i)=>`<div class="voice-item"><strong>${v.name}</strong><div class="small">${v.lang} ${v.default? ' • default':''}</div></div>`).join('') : '<div class="small">No voices loaded yet.</div>';
+}
+
+/* ======= File upload handling (click + drag/drop) ======= */
+filebox.addEventListener('click', ()=> fileInput.click());
+filebox.addEventListener('keydown', (e)=> { if(e.key==='Enter' || e.key===' ') fileInput.click(); });
+
+fileInput.addEventListener('change', async (ev)=> {
+  const f = ev.target.files[0];
+  if (!f) return;
+  await handleFile(f);
+});
+
+;['dragenter','dragover'].forEach(ev => {
+  filebox.addEventListener(ev, (e)=> { e.preventDefault(); e.stopPropagation(); filebox.classList.add('dragover'); });
+});
+;['dragleave','drop'].forEach(ev => {
+  filebox.addEventListener(ev, (e)=> { e.preventDefault(); e.stopPropagation(); filebox.classList.remove('dragover'); });
+});
+filebox.addEventListener('drop', (e)=> {
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+/* ======= PDF/Text parsing ======= */
+async function handleFile(file) {
+  status('Loading file: ' + file.name);
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.txt')) {
+    const text = await file.text();
+    textArea.value = text;
+    status('Loaded .txt file');
+  } else if (name.endsWith('.pdf')) {
+    try {
+      status('Extracting text from PDF (this may take a moment)...');
+      const buf = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: buf });
+      const pdf = await loadingTask.promise;
+      let full = '';
+      for (let i=1;i<=pdf.numPages;i++){
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const strings = content.items.map(it => it.str);
+        full += strings.join(' ') + '\n\n';
+        status(`PDF: extracted page ${i} / ${pdf.numPages}`);
       }
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.voice = voices[voiceSelect.value];
-      utterance.rate = rateRange.value;
-      speechSynthesis.speak(utterance);
+      textArea.value = full.trim();
+      status('PDF text extracted ✅');
+    } catch (err) {
+      console.error(err);
+      status('Failed to extract PDF text: ' + (err.message||err));
     }
+  } else {
+    status('Unsupported file type');
+  }
+}
 
-    function stopSpeaking() {
-      speechSynthesis.cancel();
+/* ======= Chunking for long text =======
+SpeechSynthesis may fail / cut off with extremely long utterances.
+We split by sentences/paragraphs into manageable chunks.
+====================================== */
+function splitTextIntoChunks(text, maxChars = 2000) {
+  // first split by newlines, then by sentences
+  const paragraphs = text.split(/\n+/).map(p=>p.trim()).filter(Boolean);
+  const chunks = [];
+  for (const p of paragraphs){
+    if (p.length <= maxChars) {
+      chunks.push(p);
+      continue;
     }
-
-    // Handle file uploads
-    fileInput.addEventListener('change', async function() {
-      const file = fileInput.files[0];
-      if (!file) return;
-      status.textContent = "Reading file...";
-
-      if (file.name.endsWith(".txt")) {
-        const reader = new FileReader();
-        reader.onload = e => {
-          textArea.value = e.target.result;
-          status.textContent = "Text file loaded ✅";
-        };
-        reader.readAsText(file);
-      } else if (file.name.endsWith(".pdf")) {
-        const pdfData = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-        let fullText = "";
-
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items.map(item => item.str).join(" ");
-          fullText += pageText + "\n\n";
-        }
-
-        textArea.value = fullText;
-        status.textContent = "PDF text extracted ✅";
+    // split into sentences
+    const sentences = p.match(/[^.!?]+[.!?]*/g) || [p];
+    let buffer = '';
+    for (const s of sentences){
+      if ((buffer + ' ' + s).length > maxChars) {
+        if (buffer) { chunks.push(buffer.trim()); buffer = s; }
+        else { chunks.push(s.trim()); buffer = ''; }
       } else {
-        status.textContent = "Unsupported file format ❌";
+        buffer = (buffer + ' ' + s).trim();
       }
-    });
-  </script>
+    }
+    if (buffer) chunks.push(buffer.trim());
+  }
+  return chunks;
+}
+
+/* ======= Speak queue management ======= */
+function prepareUtterances(text) {
+  utteranceQueue = [];
+  const chunks = splitTextIntoChunks(text, 1600);
+  const voiceIdx = parseInt(voiceSelect.value || 0, 10);
+  const voice = voices[voiceIdx];
+  for (const c of chunks) {
+    const u = new SpeechSynthesisUtterance(c);
+    if (voice) u.voice = voice;
+    u.rate = parseFloat(rateEl.value);
+    u.pitch = parseFloat(pitchEl.value);
+    u.volume = parseFloat(volumeEl.value);
+    utteranceQueue.push(u);
+  }
+}
+
+function playQueue() {
+  if (!utteranceQueue.length) { status('No text to speak'); return; }
+  isSpeaking = true;
+  currentIndex = 0;
+  progressBar.style.width = '0%';
+  speakNext();
+}
+
+function speakNext() {
+  if (!isSpeaking) return;
+  if (currentIndex >= utteranceQueue.length) {
+    status('Finished speaking');
+    isSpeaking = false;
+    progressBar.style.width = '100%';
+    return;
+  }
+  const u = utteranceQueue[currentIndex];
+  status(`Speaking chunk ${currentIndex+1} / ${utteranceQueue.length}`);
+  // attach events
+  u.onend = ()=> {
+    currentIndex++;
+    const pct = Math.round((currentIndex / utteranceQueue.length) * 100);
+    progressBar.style.width = pct + '%';
+    // small timeout before next chunk to avoid overlapping in some browsers
+    setTimeout(()=> speakNext(), 120);
+  };
+  u.onerror = (e)=> { console.error('Utter error', e); status('Speech error: ' + (e.error || e.message || 'unknown')); isSpeaking=false; };
+  window.speechSynthesis.speak(u);
+}
+
+/* ======= UI actions ======= */
+speakBtn.addEventListener('click', ()=> {
+  const text = textArea.value.trim();
+  if (!text) { status('Please enter or upload text'); return; }
+  if (window.speechSynthesis.speaking) {
+    status('Already speaking. Use Pause/Stop/Resume.');
+    return;
+  }
+  prepareUtterances(text);
+  playQueue();
+});
+
+pauseBtn.addEventListener('click', ()=> {
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.pause();
+    status('Paused');
+  }
+});
+resumeBtn.addEventListener('click', ()=> {
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume();
+    status('Resumed');
+  }
+});
+stopBtn.addEventListener('click', ()=> {
+  window.speechSynthesis.cancel();
+  isSpeaking = false;
+  currentIndex = 0;
+  progressBar.style.width = '0%';
+  status('Stopped');
+});
+
+refreshVoicesBtn.addEventListener('click', ()=> {
+  loadVoices();
+  status('Voices refreshed');
+});
+
+/* ======= reflect control values ======= */
+rateEl.addEventListener('input', ()=> rateVal.textContent = rateEl.value);
+pitchEl.addEventListener('input', ()=> pitchVal.textContent = pitchEl.value);
+volumeEl.addEventListener('input', ()=> volVal.textContent = volumeEl.value);
+
+/* ======= status helper ======= */
+function status(msg) {
+  statusEl.textContent = msg;
+}
+
+/* ======= initial status ======= */
+status('Ready — load a file or paste/type text. Refresh voices if list is empty.');
+</script>
 </body>
 </html>
